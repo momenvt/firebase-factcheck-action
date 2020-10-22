@@ -1,0 +1,31 @@
+{
+  "name": "appengine-action-factcheck",
+  "description": "Simple fact-check webhook for Google App Engine Standard Environment.",
+  "version": "0.0.3",
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "Md Momen Bhuiyan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/momenvt/firebase-factcheck-action.git"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "test": "mocha --exit test/*.test.js"
+  },
+  "dependencies": {
+    "@assistant/conversation": "^3.2.0",
+    "@google-cloud/logging-winston": "^4.0.0",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "googleapis": "60.0.1",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "mocha": "^8.1.3",
+    "supertest": "^5.0.0"
+  }
+}

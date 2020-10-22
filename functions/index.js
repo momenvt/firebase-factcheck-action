@@ -2,7 +2,6 @@ const functions = require('firebase-functions');
 const {google} = require('googleapis');
 const {conversation} = require('@assistant/conversation');
 
-
 const fact_check_api_key = "AIzaSyAAC6Lkl9p5-qH-N5EiohraCw2hv8tuQjI";
 const factchecktools = google.factchecktools({version: 'v1alpha1', auth: fact_check_api_key});
 
