@@ -14,65 +14,83 @@
 
 'use strict';
 
+// imports
 const winston = require('winston');
-// Imports the Google Cloud client library for Winston
 const {LoggingWinston} = require('@google-cloud/logging-winston');
+const express = require('express');
+const bodyParser = require('body-parser');
+const {google} = require('googleapis');
+const {conversation} = require('@assistant/conversation');
+
+// logger setup
 const loggingWinston = new LoggingWinston();
-// Create a Winston logger that streams to Stackdriver Logging
-// Logs will be written to: "projects/YOUR_PROJECT_ID/logs/winston_log"
 const logger = winston.createLogger({
   level: 'info',
   transports: [
     new winston.transports.Console(),
-    // Add Stackdriver Logging
     loggingWinston,
   ],
 });
 
-// [START gae_node_request_example]
-const express = require('express');
-const bodyParser = require('body-parser');
 
+// server initiate
 const expressapp = express();
 
-const {google} = require('googleapis');
-const {conversation} = require('@assistant/conversation');
-
-const fact_check_api_key = "AIzaSyAAC6Lkl9p5-qH-N5EiohraCw2hv8tuQjI";
-const factchecktools = google.factchecktools({version: 'v1alpha1', auth: fact_check_api_key});
-
+// global const
+const api_key = "AIzaSyAAC6Lkl9p5-qH-N5EiohraCw2hv8tuQjI";
 const pre_text = "I found a claim that ";
 const by_text = " by ";
-const which_is = "which seems to be ";
+const which_is = " rated this as ";
+const sent_end = ". ";
+const not_reviewed="However, this claim has not been reviewed by any fact-checker yet.";
+const not_found = "Could not find any result for this query";
+const apicode_error= "An error occurred during the API request";
+const app_glitch = 'I encountered a glitch. Can you say that again?';
+// logger const
+const related_claims = "Number of related claims: ";
+const number_reviews = "Number of review on the first related claim: ";
 
+
+// API setup
+const factchecktools = google.factchecktools({version: 'v1alpha1', auth: api_key});
 const app = conversation();
 
+// fact_check handler
 app.handle('fact_check', conv => {
     const query = conv.intent.params.query.resolved;
     logger.info("Recieved query: "+ query);
-    factchecktools.claims.search({
+    return factchecktools.claims.search({
         languageCode: 'en-US',
         query: query
     }).then(res => {
-        console.log(res);
-        if(res !== undefined && res.claims !== undefined && res.claims.length > 0 && res.claims[0].claimReview[0].length > 0){
-            let result = pre_text + res.claims[0].text + by_text + res.claims[0].claimant + which_is + res.claims[0].claimReview[0].textualRating;
-            conv.add(result);
+        if(res.data.claims !== undefined && res.data.claims.length > 0){
+            logger.info(related_claims + res.data.claims.length);
+            logger.info(JSON.stringify(res.data.claims[0]));
+            var claim_text = pre_text + res.data.claims[0].text + by_text + res.data.claims[0].claimant + sent_end;
+            if(res.data.claims[0].claimReview !== undefined && res.data.claims[0].claimReview.length > 0){
+                logger.info(number_reviews + res.data.claims[0].claimReview.length);
+                claim_text += res.data.claims[0].claimReview[0].publisher.name + which_is + res.data.claims[0].claimReview[0].textualRating + sent_end;
+            }else{
+                claim_text += not_reviewed;
+            }
+            conv.add(claim_text);
         }else{
-            conv.add("Could not find any result for this query");
+            logger.error(JSON.stringify(res));
+            conv.add(not_found);
         }
-        return 0;
     }).catch(err => {
-        logger.error(err);
-        conv.add("An error occurred during the API request");
+        logger.error(JSON.stringify(err));
+        conv.add(apicode_error);
     });
 });
 
+// error
 app.catch((conv, error) => {
-    console.error(error);
-    conv.add('I encountered a glitch. Can you say that again?');
+    logger.error(JSON.stringify(error));
+    conv.add(app_glitch);
 });
 
+// server start
 const PORT = process.env.PORT || 8080;
 expressapp.use(bodyParser.json(), app).listen(PORT);
 module.exports = expressapp;
